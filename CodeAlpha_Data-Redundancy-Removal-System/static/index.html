@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Data Redundancy Removal System</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Oxanium:wght@400;600;800&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #0a0c10;
+    --surface: #111318;
+    --border: #1e2229;
+    --accent: #00e5a0;
+    --accent2: #ff4e6a;
+    --warn: #ffb830;
+    --text: #e8eaf0;
+    --muted: #6b7280;
+    --unique: #00e5a0;
+    --redundant: #ff4e6a;
+    --fp: #ffb830;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Oxanium', sans-serif;
+    min-height: 100vh;
+  }
+
+  /* Grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,229,160,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,160,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 40px 24px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ── HEADER ── */
+  header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 48px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 32px;
+  }
+
+  .logo {
+    width: 48px; height: 48px;
+    background: var(--accent);
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+    flex-shrink: 0;
+    box-shadow: 0 0 24px rgba(0,229,160,0.3);
+  }
+
+  header h1 {
+    font-size: 1.6rem;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+  }
+
+  header p {
+    color: var(--muted);
+    font-size: 0.85rem;
+    font-family: 'Space Mono', monospace;
+    margin-top: 2px;
+  }
+
+  .badge {
+    margin-left: auto;
+    background: rgba(0,229,160,0.1);
+    border: 1px solid rgba(0,229,160,0.3);
+    color: var(--accent);
+    font-family: 'Space Mono', monospace;
+    font-size: 0.72rem;
+    padding: 4px 12px;
+    border-radius: 20px;
+  }
+
+  /* ── STATS STRIP ── */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 36px;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    transition: border-color 0.2s;
+  }
+
+  .stat-card:hover { border-color: var(--accent); }
+
+  .stat-num {
+    font-size: 2rem;
+    font-weight: 800;
+    font-family: 'Space Mono', monospace;
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+
+  .stat-label {
+    font-size: 0.72rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .stat-card.green .stat-num { color: var(--unique); }
+  .stat-card.red   .stat-num { color: var(--redundant); }
+  .stat-card.yellow .stat-num { color: var(--fp); }
+  .stat-card.blue  .stat-num { color: #60a5fa; }
+
+  /* ── INPUT SECTION ── */
+  .input-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px;
+    margin-bottom: 28px;
+  }
+
+  .section-title {
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--muted);
+    margin-bottom: 16px;
+    font-family: 'Space Mono', monospace;
+  }
+
+  .input-row {
+    display: flex;
+    gap: 12px;
+  }
+
+  input[type="text"] {
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 18px;
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    font-size: 0.9rem;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  input[type="text"]:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(0,229,160,0.1);
+  }
+
+  input[type="text"]::placeholder { color: var(--muted); }
+
+  .btn-add {
+    background: var(--accent);
+    color: #000;
+    border: none;
+    border-radius: 10px;
+    padding: 14px 28px;
+    font-family: 'Oxanium', sans-serif;
+    font-weight: 700;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.1s;
+    white-space: nowrap;
+  }
+
+  .btn-add:hover { opacity: 0.85; }
+  .btn-add:active { transform: scale(0.98); }
+
+  /* ── RESULT FLASH ── */
+  .result-flash {
+    margin-top: 16px;
+    padding: 14px 18px;
+    border-radius: 10px;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.82rem;
+    display: none;
+    border-left: 4px solid;
+    animation: slideIn 0.3s ease;
+  }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(-8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .result-flash.UNIQUE       { background: rgba(0,229,160,0.08); border-color: var(--unique); color: var(--unique); }
+  .result-flash.REDUNDANT    { background: rgba(255,78,106,0.08); border-color: var(--redundant); color: var(--redundant); }
+  .result-flash.FALSE_POSITIVE { background: rgba(255,184,48,0.08); border-color: var(--fp); color: var(--fp); }
+
+  /* ── TABS ── */
+  .tabs { display: flex; gap: 8px; margin-bottom: 20px; }
+
+  .tab {
+    padding: 8px 20px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    font-family: 'Oxanium', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .tab.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #000;
+  }
+
+  /* ── TABLE ── */
+  .table-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.84rem;
+  }
+
+  thead { background: rgba(255,255,255,0.02); }
+
+  th {
+    padding: 14px 18px;
+    text-align: left;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  td {
+    padding: 13px 18px;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    font-size: 0.82rem;
+  }
+
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+
+  .pill {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 0.72rem;
+    font-weight: 600;
+  }
+
+  .pill.UNIQUE         { background: rgba(0,229,160,0.12); color: var(--unique); }
+  .pill.REDUNDANT      { background: rgba(255,78,106,0.12); color: var(--redundant); }
+  .pill.FALSE_POSITIVE { background: rgba(255,184,48,0.12); color: var(--fp); }
+
+  .empty-msg {
+    text-align: center;
+    padding: 48px;
+    color: var(--muted);
+    font-family: 'Space Mono', monospace;
+    font-size: 0.82rem;
+  }
+
+  @media (max-width: 640px) {
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    .input-row { flex-direction: column; }
+    header h1 { font-size: 1.2rem; }
+    .badge { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- HEADER -->
+  <header>
+    <div class="logo">🛡️</div>
+    <div>
+      <h1>Data Redundancy Removal System</h1>
+    </div>
+    <div class="badge">LIVE SYSTEM</div>
+  </header>
+
+  <!-- STATS -->
+  <div class="stats-grid" id="statsGrid">
+    <div class="stat-card blue">
+      <div class="stat-num" id="stat-total">—</div>
+      <div class="stat-label">Total Attempts</div>
+    </div>
+    <div class="stat-card green">
+      <div class="stat-num" id="stat-unique">—</div>
+      <div class="stat-label">Unique Stored</div>
+    </div>
+    <div class="stat-card red">
+      <div class="stat-num" id="stat-redundant">—</div>
+      <div class="stat-label">Redundant Blocked</div>
+    </div>
+    <div class="stat-card yellow">
+      <div class="stat-num" id="stat-fp">—</div>
+      <div class="stat-label">False Positives</div>
+    </div>
+  </div>
+
+  <!-- INPUT -->
+  <div class="input-section">
+    <div class="section-title">// Add New Entry</div>
+    <div class="input-row">
+      <input type="text" id="entryInput" placeholder="e.g. John Doe, john@example.com, +91-9876543210" />
+      <button class="btn-add" onclick="submitEntry()">+ Add Entry</button>
+    </div>
+    <div id="resultFlash" class="result-flash"></div>
+  </div>
+
+  <!-- TABS + TABLE -->
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('records', this)">Unique Records</button>
+    <button class="tab" onclick="switchTab('logs', this)">Insertion Log</button>
+  </div>
+
+  <div class="table-wrap">
+    <!-- Records Table -->
+    <div id="tab-records">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Content</th>
+            <th>Added At</th>
+          </tr>
+        </thead>
+        <tbody id="recordsBody">
+          <tr><td colspan="3" class="empty-msg">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Logs Table -->
+    <div id="tab-logs" style="display:none">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Content</th>
+            <th>Status</th>
+            <th>Reason</th>
+            <th>Time</th>
+          </tr>
+        </thead>
+        <tbody id="logsBody">
+          <tr><td colspan="5" class="empty-msg">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const BASE = "";  // same origin
+
+  async function loadStats() {
+    const r = await fetch(`${BASE}/api/stats`);
+    const d = await r.json();
+    document.getElementById("stat-total").textContent     = d.total_attempts;
+    document.getElementById("stat-unique").textContent    = d.unique_stored;
+    document.getElementById("stat-redundant").textContent = d.redundant_blocked;
+    document.getElementById("stat-fp").textContent        = d.false_positives_blocked;
+  }
+
+  async function loadRecords() {
+    const r = await fetch(`${BASE}/api/records`);
+    const rows = await r.json();
+    const tbody = document.getElementById("recordsBody");
+    if (!rows.length) {
+      tbody.innerHTML = `<tr><td colspan="3" class="empty-msg">No records yet. Add some entries above.</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = rows.map(rec => `
+      <tr>
+        <td>${rec.id}</td>
+        <td>${esc(rec.content)}</td>
+        <td>${rec.added_at}</td>
+      </tr>
+    `).join("");
+  }
+
+  async function loadLogs() {
+    const r = await fetch(`${BASE}/api/logs`);
+    const rows = await r.json();
+    const tbody = document.getElementById("logsBody");
+    if (!rows.length) {
+      tbody.innerHTML = `<tr><td colspan="5" class="empty-msg">No logs yet.</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = rows.map(log => `
+      <tr>
+        <td>${log.id}</td>
+        <td>${esc(log.content)}</td>
+        <td><span class="pill ${log.status}">${log.status}</span></td>
+        <td>${esc(log.reason)}</td>
+        <td>${log.attempted_at}</td>
+      </tr>
+    `).join("");
+  }
+
+  async function submitEntry() {
+    const input = document.getElementById("entryInput");
+    const content = input.value.trim();
+    if (!content) return;
+
+    const flash = document.getElementById("resultFlash");
+    flash.style.display = "none";
+
+    const r = await fetch(`${BASE}/api/add`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content })
+    });
+    const d = await r.json();
+
+    const icons = { UNIQUE: "✅", REDUNDANT: "🔴", FALSE_POSITIVE: "⚠️" };
+    flash.className = `result-flash ${d.status}`;
+    flash.innerHTML = `${icons[d.status] || ""} <strong>${d.status}</strong> — ${d.reason}${d.similar_to ? `<br>↳ Similar to: "${esc(d.similar_to)}"` : ""}`;
+    flash.style.display = "block";
+
+    input.value = "";
+    await Promise.all([loadStats(), loadRecords(), loadLogs()]);
+  }
+
+  // Enter key support
+  document.addEventListener("DOMContentLoaded", () => {
+    document.getElementById("entryInput").addEventListener("keydown", e => {
+      if (e.key === "Enter") submitEntry();
+    });
+  });
+
+  function switchTab(name, btn) {
+    document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+    btn.classList.add("active");
+    document.getElementById("tab-records").style.display = name === "records" ? "block" : "none";
+    document.getElementById("tab-logs").style.display    = name === "logs"    ? "block" : "none";
+  }
+
+  function esc(str) {
+    return String(str)
+      .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+      .replace(/"/g,"&quot;");
+  }
+
+  // Initial load
+  Promise.all([loadStats(), loadRecords(), loadLogs()]);
+</script>
+</body>
+</html>

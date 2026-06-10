@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>SQL Injection Security System</title>
+<link href="https://fonts.googleapis.com/css2?family=Oxanium:wght@400;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  background: #080a0f;
+  color: #e2e8f0;
+  font-family: 'Oxanium', sans-serif;
+  min-height: 100vh;
+}
+
+body::before {
+  content:'';
+  position:fixed; inset:0;
+  background-image:
+    linear-gradient(rgba(255,78,106,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,78,106,0.03) 1px, transparent 1px);
+  background-size: 44px 44px;
+  pointer-events:none; z-index:0;
+}
+
+.container { max-width:1120px; margin:0 auto; padding:36px 24px; position:relative; z-index:1; }
+
+/* ── HEADER ── */
+header {
+  display:flex; align-items:center; gap:16px;
+  margin-bottom:40px;
+  border-bottom:1px solid #1a1f2e;
+  padding-bottom:28px;
+}
+.logo {
+  width:52px; height:52px;
+  background:linear-gradient(135deg,#ff4e6a,#ff8c6b);
+  border-radius:14px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:24px;
+  box-shadow:0 0 28px rgba(255,78,106,0.35);
+  flex-shrink:0;
+}
+header h1 { font-size:1.6rem; font-weight:800; letter-spacing:-0.4px; color:#f1f5f9; }
+header p  { font-size:0.8rem; color:#64748b; font-family:'Space Mono',monospace; margin-top:3px; }
+.live-badge {
+  margin-left:auto;
+  display:flex; align-items:center; gap:8px;
+  background:rgba(255,78,106,0.1);
+  border:1px solid rgba(255,78,106,0.3);
+  padding:6px 14px; border-radius:20px;
+  font-size:0.72rem; font-family:'Space Mono',monospace; color:#ff4e6a;
+}
+.pulse {
+  width:8px; height:8px; border-radius:50%;
+  background:#ff4e6a;
+  animation: pulse 1.5s infinite;
+}
+@keyframes pulse {
+  0%,100% { opacity:1; transform:scale(1); }
+  50%      { opacity:0.4; transform:scale(0.7); }
+}
+
+/* ── STATS ── */
+.stats { display:grid; grid-template-columns:repeat(5,1fr); gap:12px; margin-bottom:32px; }
+.stat {
+  background:#0d1117; border:1px solid #1a1f2e;
+  border-radius:12px; padding:18px; text-align:center;
+  transition:border-color 0.2s;
+}
+.stat:hover { border-color:#ff4e6a; }
+.stat-n {
+  font-size:1.9rem; font-weight:800;
+  font-family:'Space Mono',monospace;
+  line-height:1; margin-bottom:5px;
+}
+.stat-l { font-size:0.68rem; color:#64748b; text-transform:uppercase; letter-spacing:1px; }
+.c-red    { color:#ff4e6a; }
+.c-green  { color:#00e5a0; }
+.c-yellow { color:#ffb830; }
+.c-blue   { color:#60a5fa; }
+.c-purple { color:#a78bfa; }
+
+/* ── TABS ── */
+.tab-bar { display:flex; gap:4px; margin-bottom:24px; }
+.tab-btn {
+  padding:9px 22px; border-radius:8px;
+  border:1px solid #1a1f2e; background:transparent;
+  color:#64748b; font-family:'Oxanium',sans-serif;
+  font-size:0.85rem; font-weight:600; cursor:pointer;
+  transition:all 0.2s;
+}
+.tab-btn.active { background:#ff4e6a; border-color:#ff4e6a; color:#fff; }
+.tab-btn:hover:not(.active) { border-color:#ff4e6a; color:#ff4e6a; }
+
+/* ── PANELS ── */
+.panel { display:none; }
+.panel.active { display:block; }
+
+/* ── TWO COL ── */
+.two-col { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:24px; }
+
+/* ── CARD ── */
+.card {
+  background:#0d1117; border:1px solid #1a1f2e;
+  border-radius:14px; overflow:hidden;
+}
+.card-head {
+  padding:18px 22px;
+  border-bottom:1px solid #1a1f2e;
+  display:flex; align-items:center; gap:10px;
+}
+.card-head h3 { font-size:0.9rem; font-weight:700; }
+.card-head p  { font-size:0.72rem; color:#64748b; font-family:'Space Mono',monospace; margin-top:2px; }
+.card-body { padding:22px; }
+
+/* ── FORM ── */
+.field { margin-bottom:16px; }
+.field label {
+  display:block; font-size:0.72rem;
+  font-family:'Space Mono',monospace;
+  color:#64748b; text-transform:uppercase;
+  letter-spacing:1px; margin-bottom:7px;
+}
+.field input, .field textarea {
+  width:100%; background:#080a0f;
+  border:1px solid #1a1f2e; border-radius:8px;
+  padding:12px 14px; color:#e2e8f0;
+  font-family:'Space Mono',monospace; font-size:0.85rem;
+  outline:none; transition:border-color 0.2s, box-shadow 0.2s;
+  resize:none;
+}
+.field input:focus, .field textarea:focus {
+  border-color:#ff4e6a;
+  box-shadow:0 0 0 3px rgba(255,78,106,0.1);
+}
+.field input::placeholder, .field textarea::placeholder { color:#374151; }
+
+.btn {
+  width:100%; padding:13px;
+  border:none; border-radius:8px;
+  font-family:'Oxanium',sans-serif;
+  font-weight:700; font-size:0.9rem;
+  cursor:pointer; transition:opacity 0.2s, transform 0.1s;
+}
+.btn:active { transform:scale(0.98); }
+.btn-red   { background:linear-gradient(135deg,#ff4e6a,#ff6b35); color:#fff; }
+.btn-green { background:linear-gradient(135deg,#00e5a0,#00b87a); color:#000; }
+.btn-blue  { background:linear-gradient(135deg,#60a5fa,#3b82f6); color:#fff; }
+.btn:hover { opacity:0.88; }
+
+/* ── RESULT FLASH ── */
+.flash {
+  display:none; margin-top:14px;
+  padding:13px 16px; border-radius:8px;
+  font-family:'Space Mono',monospace; font-size:0.8rem;
+  border-left:4px solid; line-height:1.6;
+  animation:slideIn 0.3s ease;
+}
+@keyframes slideIn {
+  from { opacity:0; transform:translateY(-6px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+.flash.success  { background:rgba(0,229,160,0.07); border-color:#00e5a0; color:#00e5a0; }
+.flash.error    { background:rgba(255,78,106,0.07); border-color:#ff4e6a; color:#ff4e6a; }
+.flash.blocked  { background:rgba(255,184,48,0.07); border-color:#ffb830; color:#ffb830; }
+.flash.clean    { background:rgba(96,165,250,0.07); border-color:#60a5fa; color:#60a5fa; }
+
+/* ── SECURITY LAYERS VISUAL ── */
+/* ── TABLE ── */
+.tbl-wrap {
+  background:#0d1117; border:1px solid #1a1f2e;
+  border-radius:14px; overflow:hidden;
+}
+table { width:100%; border-collapse:collapse; font-size:0.8rem; }
+thead { background:rgba(255,255,255,0.02); }
+th {
+  padding:12px 16px; text-align:left;
+  font-family:'Space Mono',monospace; font-size:0.65rem;
+  color:#64748b; text-transform:uppercase; letter-spacing:1px;
+  border-bottom:1px solid #1a1f2e;
+}
+td {
+  padding:11px 16px;
+  border-bottom:1px solid rgba(255,255,255,0.03);
+  font-family:'Space Mono',monospace; font-size:0.78rem; color:#cbd5e1;
+}
+tr:last-child td { border-bottom:none; }
+tr:hover td { background:rgba(255,255,255,0.02); }
+.empty { text-align:center; padding:40px; color:#374151; font-family:'Space Mono',monospace; font-size:0.8rem; }
+
+/* ── PILL ── */
+.pill {
+  display:inline-block; padding:2px 9px;
+  border-radius:12px; font-size:0.68rem; font-weight:700;
+}
+.pill.HIGH    { background:rgba(255,78,106,0.12); color:#ff4e6a; }
+.pill.MEDIUM  { background:rgba(255,184,48,0.12); color:#ffb830; }
+.pill.NONE    { background:rgba(0,229,160,0.12); color:#00e5a0; }
+.pill.blocked { background:rgba(255,78,106,0.12); color:#ff4e6a; }
+.pill.safe    { background:rgba(0,229,160,0.12); color:#00e5a0; }
+
+@media(max-width:700px) {
+  .stats { grid-template-columns:repeat(2,1fr); }
+  .two-col { grid-template-columns:1fr; }
+  header h1 { font-size:1.1rem; }
+  .live-badge { display:none; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- HEADER -->
+  <header>
+    <div class="logo">🔐</div>
+    <div>
+      <h1>SQL Injection Security System</h1>
+
+    </div>
+    <div class="live-badge"><div class="pulse"></div>PROTECTED</div>
+  </header>
+
+  <!-- STATS -->
+  <div class="stats">
+    <div class="stat"><div class="stat-n c-blue"  id="s-users">—</div><div class="stat-l">Registered Users</div></div>
+    <div class="stat"><div class="stat-n c-purple" id="s-total">—</div><div class="stat-l">Total Attempts</div></div>
+    <div class="stat"><div class="stat-n c-green"  id="s-safe">—</div><div class="stat-l">Safe Requests</div></div>
+    <div class="stat"><div class="stat-n c-red"    id="s-blocked">—</div><div class="stat-l">Attacks Blocked</div></div>
+    <div class="stat"><div class="stat-n c-yellow" id="s-attacks">—</div><div class="stat-l">Attacks Logged</div></div>
+  </div>
+
+  <!-- TAB BAR -->
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="switchTab('register',this)">Register</button>
+    <button class="tab-btn" onclick="switchTab('login',this)">Login</button>
+    <button class="tab-btn" onclick="switchTab('test',this)">Injection Tester</button>
+    <button class="tab-btn" onclick="switchTab('users',this)">Users DB</button>
+    <button class="tab-btn" onclick="switchTab('logs',this)">Security Logs</button>
+    <button class="tab-btn" onclick="switchTab('attacks',this)">Attacks</button>
+  </div>
+
+  <!-- ══ REGISTER PANEL ══ -->
+  <div class="panel active" id="panel-register">
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <h3>🛡️ Secure Registration</h3>
+          <p>Double-layer security on every field</p>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="field"><label>Username</label><input id="reg-user" type="text" placeholder="Enter username"/></div>
+        <div class="field"><label>Email</label><input id="reg-email" type="text" placeholder="Enter email (will be encrypted)"/></div>
+        <div class="field"><label>Password</label><input id="reg-pass" type="password" placeholder="Enter password (will be hashed)"/></div>
+        <button class="btn btn-red" onclick="doRegister()">Register Securely</button>
+        <div id="reg-flash" class="flash"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ LOGIN PANEL ══ -->
+  <div class="panel" id="panel-login">
+    <div class="two-col">
+      <div class="card">
+        <div class="card-head"><div><h3>🔑 Secure Login</h3><p>SQL injection checked before credential verify</p></div></div>
+        <div class="card-body">
+          <div class="field"><label>Username</label><input id="login-user" type="text" placeholder="Enter username"/></div>
+          <div class="field"><label>Password</label><input id="login-pass" type="password" placeholder="Enter password"/></div>
+          <button class="btn btn-green" onclick="doLogin()">Login Securely</button>
+          <div id="login-flash" class="flash"></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head"><div><h3>⚡ Try SQL Injection on Login</h3><p>See the system block these in real time</p></div></div>
+        <div class="card-body">
+          <p style="font-size:0.78rem;color:#64748b;font-family:'Space Mono',monospace;margin-bottom:14px;">Paste these into the username field above and try logging in:</p>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <div class="attack-eg" onclick="fillLogin(this)" style="cursor:pointer;background:#080a0f;border:1px solid #1a1f2e;border-radius:8px;padding:10px 12px;font-family:'Space Mono',monospace;font-size:0.75rem;color:#ff4e6a;transition:border-color 0.2s" onmouseover="this.style.borderColor='#ff4e6a'" onmouseout="this.style.borderColor='#1a1f2e'">
+              ' OR '1'='1
+            </div>
+            <div class="attack-eg" onclick="fillLogin(this)" style="cursor:pointer;background:#080a0f;border:1px solid #1a1f2e;border-radius:8px;padding:10px 12px;font-family:'Space Mono',monospace;font-size:0.75rem;color:#ff4e6a;transition:border-color 0.2s" onmouseover="this.style.borderColor='#ff4e6a'" onmouseout="this.style.borderColor='#1a1f2e'">
+              admin'--
+            </div>
+            <div class="attack-eg" onclick="fillLogin(this)" style="cursor:pointer;background:#080a0f;border:1px solid #1a1f2e;border-radius:8px;padding:10px 12px;font-family:'Space Mono',monospace;font-size:0.75rem;color:#ff4e6a;transition:border-color 0.2s" onmouseover="this.style.borderColor='#ff4e6a'" onmouseout="this.style.borderColor='#1a1f2e'">
+              1; DROP TABLE users--
+            </div>
+            <div class="attack-eg" onclick="fillLogin(this)" style="cursor:pointer;background:#080a0f;border:1px solid #1a1f2e;border-radius:8px;padding:10px 12px;font-family:'Space Mono',monospace;font-size:0.75rem;color:#ff4e6a;transition:border-color 0.2s" onmouseover="this.style.borderColor='#ff4e6a'" onmouseout="this.style.borderColor='#1a1f2e'">
+              ' UNION SELECT * FROM users--
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ INJECTION TESTER PANEL ══ -->
+  <div class="panel" id="panel-test">
+    <div class="two-col">
+      <div class="card">
+        <div class="card-head"><div><h3>⚗️ SQL Injection Tester</h3><p>Test any input against the detection engine</p></div></div>
+        <div class="card-body">
+          <div class="field">
+            <label>Input to Test</label>
+            <textarea id="test-input" rows="4" placeholder="Type or paste any SQL injection attempt here..."></textarea>
+          </div>
+          <button class="btn btn-blue" onclick="doTest()">Analyse Input</button>
+          <div id="test-flash" class="flash"></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head"><div><h3>📋 Sample Attack Vectors</h3><p>Click to load into tester</p></div></div>
+        <div class="card-body">
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <div onclick="loadTest(this)" style="cursor:pointer;background:#080a0f;border:1px solid #1a1f2e;border-radius:8px;padding:10px 12px;font-family:'Space Mono',monospace;font-size:0.72rem;transition:border-color 0.2s" onmouseover="this.style.borderColor='#60a5fa'" onmouseout="this.style.borderColor='#1a1f2e'">
+              <span style="color:#64748b">Classic: </span><span style="color:#ff4e6a">' OR 1=1 --</span>
+            </div>
+            <div onclick="loadTest(this)" style="cursor:pointer;background:#080a0f;border:1px solid #1a1f2e;border-radius:8px;padding:10px 12px;font-family:'Space Mono',monospace;font-size:0.72rem;transition:border-color 0.2s" onmouseover="this.style.borderColor='#60a5fa'" onmouseout="this.style.borderColor='#1a1f2e'">
+              <span style="color:#64748b">UNION: </span><span style="color:#ff4e6a">UNION SELECT username,password FROM users</span>
+            </div>
+            <div onclick="loadTest(this)" style="cursor:pointer;background:#080a0f;border:1px solid #1a1f2e;border-radius:8px;padding:10px 12px;font-family:'Space Mono',monospace;font-size:0.72rem;transition:border-color 0.2s" onmouseover="this.style.borderColor='#60a5fa'" onmouseout="this.style.borderColor='#1a1f2e'">
+              <span style="color:#64748b">Drop: </span><span style="color:#ff4e6a">'; DROP TABLE users; --</span>
+            </div>
+            <div onclick="loadTest(this)" style="cursor:pointer;background:#080a0f;border:1px solid #1a1f2e;border-radius:8px;padding:10px 12px;font-family:'Space Mono',monospace;font-size:0.72rem;transition:border-color 0.2s" onmouseover="this.style.borderColor='#60a5fa'" onmouseout="this.style.borderColor='#1a1f2e'">
+              <span style="color:#64748b">Blind: </span><span style="color:#ff4e6a">1' AND SLEEP(5) --</span>
+            </div>
+            <div onclick="loadTest(this)" style="cursor:pointer;background:#080a0f;border:1px solid #1a1f2e;border-radius:8px;padding:10px 12px;font-family:'Space Mono',monospace;font-size:0.72rem;transition:border-color 0.2s" onmouseover="this.style.borderColor='#60a5fa'" onmouseout="this.style.borderColor='#1a1f2e'">
+              <span style="color:#64748b">Safe: </span><span style="color:#00e5a0">hello@example.com</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ USERS PANEL ══ -->
+  <div class="panel" id="panel-users">
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>#</th><th>Username</th><th>Email (Decrypted)</th><th>Registered At</th></tr></thead>
+        <tbody id="users-body"><tr><td colspan="4" class="empty">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ══ LOGS PANEL ══ -->
+  <div class="panel" id="panel-logs">
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>#</th><th>Input</th><th>Action</th><th>Risk</th><th>Malicious</th><th>Time</th></tr></thead>
+        <tbody id="logs-body"><tr><td colspan="6" class="empty">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ══ ATTACKS PANEL ══ -->
+  <div class="panel" id="panel-attacks">
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>#</th><th>Attack Input</th><th>Pattern Matched</th><th>Risk Level</th><th>Blocked At</th></tr></thead>
+        <tbody id="attacks-body"><tr><td colspan="5" class="empty">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const BASE = "";
+
+/* ── STATS ── */
+async function loadStats() {
+  try {
+    const r = await fetch(`${BASE}/api/stats`);
+    const d = await r.json();
+    document.getElementById("s-users").textContent   = d.total_users;
+    document.getElementById("s-total").textContent   = d.total_attempts;
+    document.getElementById("s-safe").textContent    = d.safe_attempts;
+    document.getElementById("s-blocked").textContent = d.blocked_attempts;
+    document.getElementById("s-attacks").textContent = d.attacks_detected;
+  } catch(e) {}
+}
+
+/* ── REGISTER ── */
+async function doRegister() {
+  const username = document.getElementById("reg-user").value.trim();
+  const email    = document.getElementById("reg-email").value.trim();
+  const password = document.getElementById("reg-pass").value.trim();
+  if (!username || !email || !password) return showFlash("reg-flash","error","All fields required.");
+
+  const r = await fetch(`${BASE}/api/register`, {
+    method:"POST", headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({username,email,password})
+  });
+  const d = await r.json();
+
+  if (d.status === "BLOCKED") {
+    showFlash("reg-flash","blocked",`🚨 BLOCKED — ${d.message}\n🛡️ ${d.layer}`);
+  } else if (d.success) {
+    showFlash("reg-flash","success",`✅ ${d.message}\n🔒 Security: ${d.security}`);
+    document.getElementById("reg-user").value = "";
+    document.getElementById("reg-email").value = "";
+    document.getElementById("reg-pass").value = "";
+  } else {
+    showFlash("reg-flash","error",`❌ ${d.message}`);
+  }
+  await refreshAll();
+}
+
+/* ── LOGIN ── */
+async function doLogin() {
+  const username = document.getElementById("login-user").value.trim();
+  const password = document.getElementById("login-pass").value.trim();
+  if (!username || !password) return showFlash("login-flash","error","Both fields required.");
+
+  const r = await fetch(`${BASE}/api/login`, {
+    method:"POST", headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({username,password})
+  });
+  const d = await r.json();
+
+  if (d.status === "BLOCKED") {
+    showFlash("login-flash","blocked",`🚨 BLOCKED — ${d.message}\n🛡️ ${d.layer}`);
+  } else if (d.success) {
+    showFlash("login-flash","success",`✅ ${d.message}`);
+  } else {
+    showFlash("login-flash","error",`❌ ${d.message}`);
+  }
+  await refreshAll();
+}
+
+/* ── INJECTION TEST ── */
+async function doTest() {
+  const input = document.getElementById("test-input").value.trim();
+  if (!input) return showFlash("test-flash","error","Enter something to test.");
+
+  const r = await fetch(`${BASE}/api/test-injection`, {
+    method:"POST", headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({input})
+  });
+  const d = await r.json();
+
+  if (d.is_malicious) {
+    showFlash("test-flash","blocked",`🚨 MALICIOUS — Risk: ${d.risk_level}\n🔍 ${d.detail}\n🎯 Pattern: ${d.pattern_matched}`);
+  } else {
+    showFlash("test-flash","clean",`✅ CLEAN INPUT — No injection patterns detected.\n✔ This input is safe to use.`);
+  }
+  await refreshAll();
+}
+
+/* ── TABLES ── */
+async function loadUsers() {
+  const r = await fetch(`${BASE}/api/users`);
+  const rows = await r.json();
+  const tb = document.getElementById("users-body");
+  if (!rows.length) { tb.innerHTML=`<tr><td colspan="4" class="empty">No users registered yet.</td></tr>`; return; }
+  tb.innerHTML = rows.map(u=>`
+    <tr>
+      <td>${u.id}</td>
+      <td style="color:#60a5fa">${esc(u.username)}</td>
+      <td style="color:#00e5a0">${esc(u.email)}</td>
+      <td>${u.created_at}</td>
+    </tr>`).join("");
+}
+
+async function loadLogs() {
+  const r = await fetch(`${BASE}/api/logs`);
+  const rows = await r.json();
+  const tb = document.getElementById("logs-body");
+  if (!rows.length) { tb.innerHTML=`<tr><td colspan="6" class="empty">No logs yet.</td></tr>`; return; }
+  tb.innerHTML = rows.map(l=>`
+    <tr>
+      <td>${l.id}</td>
+      <td>${esc(l.input).substring(0,40)}${l.input.length>40?"…":""}</td>
+      <td style="color:#a78bfa">${l.action}</td>
+      <td><span class="pill ${l.risk}">${l.risk}</span></td>
+      <td><span class="pill ${l.malicious?'blocked':'safe'}">${l.malicious?"BLOCKED":"SAFE"}</span></td>
+      <td>${l.time}</td>
+    </tr>`).join("");
+}
+
+async function loadAttacks() {
+  const r = await fetch(`${BASE}/api/attacks`);
+  const rows = await r.json();
+  const tb = document.getElementById("attacks-body");
+  if (!rows.length) { tb.innerHTML=`<tr><td colspan="5" class="empty">No attacks detected yet. Try the Injection Tester!</td></tr>`; return; }
+  tb.innerHTML = rows.map(a=>`
+    <tr>
+      <td>${a.id}</td>
+      <td style="color:#ff4e6a;font-family:'Space Mono',monospace">${esc(a.input).substring(0,40)}${a.input.length>40?"…":""}</td>
+      <td style="color:#ffb830;font-size:0.72rem">${esc(a.pattern).substring(0,40)}</td>
+      <td><span class="pill ${a.risk}">${a.risk}</span></td>
+      <td>${a.time}</td>
+    </tr>`).join("");
+}
+
+/* ── HELPERS ── */
+function showFlash(id, type, msg) {
+  const el = document.getElementById(id);
+  el.className = `flash ${type}`;
+  el.style.whiteSpace = "pre-line";
+  el.textContent = msg;
+  el.style.display = "block";
+}
+
+function fillLogin(el) {
+  document.getElementById("login-user").value = el.textContent.trim();
+}
+
+function loadTest(el) {
+  const text = el.querySelector("span:last-child").textContent.trim();
+  document.getElementById("test-input").value = text;
+}
+
+function switchTab(name, btn) {
+  document.querySelectorAll(".tab-btn").forEach(b=>b.classList.remove("active"));
+  btn.classList.add("active");
+  document.querySelectorAll(".panel").forEach(p=>p.classList.remove("active"));
+  document.getElementById(`panel-${name}`).classList.add("active");
+}
+
+function esc(str) {
+  return String(str||"")
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+async function refreshAll() {
+  await Promise.all([loadStats(), loadUsers(), loadLogs(), loadAttacks()]);
+}
+
+// Enter key support
+document.addEventListener("DOMContentLoaded", () => {
+  document.getElementById("test-input").addEventListener("keydown", e => {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); doTest(); }
+  });
+  refreshAll();
+});
+</script>
+</body>
+</html>
