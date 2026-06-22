@@ -1,8 +1,7 @@
 # Detecting-Data-Leaks-Using-SQL-Injection
 This project is a lightweight, internet-accessible cloud system designed to protect sensitive user data from data leaks and SQL Injection (SQLi) vulnerabilities. By combining modern cryptographic standards with a novel runtime access control mechanism, the system ensures that backend databases remain secure even when processing dynamic queries.
 
-Live Public URL of this Project - https://codealpha-detecting-data-leaks-using-sql-5cha.onrender.com/
-
+Live Public URL of this Project - https://detecting-data-leaks-using-sql-inje.vercel.app/
 # SQL Injection Detection & Security System
 
 ---
