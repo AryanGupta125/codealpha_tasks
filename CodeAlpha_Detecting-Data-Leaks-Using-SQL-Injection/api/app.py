@@ -4,7 +4,7 @@ Run: python app.py
 """
 
 from flask import Flask, request, jsonify, send_from_directory
-from security_system import (
+from api.security_system import (
     init_db, secure_register, secure_login,
     test_injection, get_users, get_security_logs,
     get_attacks, get_stats
